@@ -35,8 +35,6 @@ error = pd.DataFrame(error, columns=['epsilon', 'x1'])
 e = error['epsilon']
 v = error['x1']
 
-"""Normal Distribution with Mean = 0, Variance = 1 and Covariance = 0.8. Moreover, the covariance matrix must be positive semi-definite (eigenvalues are nonnegative) otherwise the behavior of this method will be undefined and backward compability will not be guaranteed. *(Papoulis, A., “Probability, Random Variables, and Stochastic Processes,” 3rd ed., New York: McGraw-Hill, 1991.)*"""
-
 # (d) Data Generating Process for the Causal & First-Stage Model
 
 delta = 0.5
@@ -52,8 +50,6 @@ X = sm.add_constant(X)
 fs_model = sm.OLS(Y, X).fit()
 print(fs_model.summary())
 
-"""**OLS estimate δ = 0.9056**"""
-
 # (f) 2SLS estimation using Z as an Instrument
 
 exog = X
@@ -65,9 +61,4 @@ instrument = sm.add_constant(instrument)
 IV_model = IV2SLS(endog = Y, exog = exog, instrument = instrument).fit()
 print(IV_model.summary())
 
-"""1st stage - **OLS estimate with OVB: δ = 0.9056**
-
-2nd stage - **2SLS estimate: δ = 0.5025**
-
-(g) The parameter value chosen randomly to generate the data was 0.5. In the first stage where we get delta with an omitted variable bias, we find that the estimate is 0.9056. In the second stage, the 2SLS estimator gave us a sufficiently close estimate of delta, i.e., 0.5025, to the parameter value we picked at the beginning of the experiment. Therefore, we can conclude that Z is a valid internal instrument to estimate the causal effect of X on Y.
 """
