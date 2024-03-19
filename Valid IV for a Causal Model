@@ -1,0 +1,247 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyMZINwhOIgRQ3OCBpb9F1xj",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Ayush0345/Causal-Inference-Experiments/blob/main/Valid%20IV%20for%20a%20Causal%20Model\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "TGBc-sym287m"
+      },
+      "outputs": [],
+      "source": [
+        "import numpy as np\n",
+        "import pandas as pd\n",
+        "import statsmodels.api as sm\n",
+        "from itertools import combinations\n",
+        "from statsmodels.sandbox.regression.gmm import IV2SLS\n",
+        "import matplotlib.pyplot as plt"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# (a) Setting random observation and seed for reproduction of results in each iteration\n",
+        "np.random.seed(42)\n",
+        "\n",
+        "data = np.random.normal(size=10000)\n",
+        "data.shape # check shape for consistency of vector size"
+      ],
+      "metadata": {
+        "id": "aeDVEfCr30aa"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# (b) Generating random data for the instrumental variable in the form of a normal distribution with mean 2 and variance 1\n",
+        "\n",
+        "Z = np.random.normal(loc = 2, scale = 1, size = 10000)\n",
+        "Z.shape # check shape for consistency of vector size"
+      ],
+      "metadata": {
+        "id": "dpOnSPS36d68"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# (c) Generating random data for error terms in the form of a bivariate normal distribution with mean 0, variance 1, and correlation 0.8\n",
+        "\n",
+        "mean = [0,0]\n",
+        "covariance = [[1,0.8],[0.8,1]]\n",
+        "\n",
+        "error = np.random.multivariate_normal(mean, covariance, size = 10000)\n",
+        "error = pd.DataFrame(error, columns=['epsilon', 'x1'])\n",
+        "e = error['epsilon']\n",
+        "v = error['x1']"
+      ],
+      "metadata": {
+        "id": "0SZMbj81_Uc3"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Normal Distribution with Mean = 0, Variance = 1 and Covariance = 0.8. Moreover, the covariance matrix must be positive semi-definite (eigenvalues are nonnegative) otherwise the behavior of this method will be undefined and backward compability will not be guaranteed. *(Papoulis, A., “Probability, Random Variables, and Stochastic Processes,” 3rd ed., New York: McGraw-Hill, 1991.)*"
+      ],
+      "metadata": {
+        "id": "nVEQq948AUvU"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# (d) Data Generating Process for the Causal & First-Stage Model\n",
+        "\n",
+        "delta = 0.5\n",
+        "\n",
+        "X = Z + v\n",
+        "print(X)\n",
+        "\n",
+        "Y = delta*X + e"
+      ],
+      "metadata": {
+        "id": "TtWMI04jBTXt"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# (e) OLS Estimates\n",
+        "\n",
+        "X = sm.add_constant(X)\n",
+        "fs_model = sm.OLS(Y, X).fit()\n",
+        "print(fs_model.summary())"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "77U6kc6yMkxZ",
+        "outputId": "c7d970c5-134b-48c2-ea81-dca5d7073bc8"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "                            OLS Regression Results                            \n",
+            "==============================================================================\n",
+            "Dep. Variable:                      y   R-squared:                       0.706\n",
+            "Model:                            OLS   Adj. R-squared:                  0.706\n",
+            "Method:                 Least Squares   F-statistic:                 2.405e+04\n",
+            "Date:                Mon, 18 Mar 2024   Prob (F-statistic):               0.00\n",
+            "Time:                        16:54:33   Log-Likelihood:                -12274.\n",
+            "No. Observations:               10000   AIC:                         2.455e+04\n",
+            "Df Residuals:                    9998   BIC:                         2.457e+04\n",
+            "Df Model:                           1                                         \n",
+            "Covariance Type:            nonrobust                                         \n",
+            "==============================================================================\n",
+            "                 coef    std err          t      P>|t|      [0.025      0.975]\n",
+            "------------------------------------------------------------------------------\n",
+            "const         -0.8072      0.014    -56.186      0.000      -0.835      -0.779\n",
+            "x1             0.9056      0.006    155.067      0.000       0.894       0.917\n",
+            "==============================================================================\n",
+            "Omnibus:                        7.469   Durbin-Watson:                   1.996\n",
+            "Prob(Omnibus):                  0.024   Jarque-Bera (JB):                7.489\n",
+            "Skew:                          -0.067   Prob(JB):                       0.0236\n",
+            "Kurtosis:                       2.989   Cond. No.                         4.78\n",
+            "==============================================================================\n",
+            "\n",
+            "Notes:\n",
+            "[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "**OLS estimate δ = 0.9056**"
+      ],
+      "metadata": {
+        "id": "PB9ft3GnPoAO"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# (f) 2SLS estimation using Z as an Instrument\n",
+        "\n",
+        "exog = X\n",
+        "exog = sm.add_constant(exog)\n",
+        "\n",
+        "instrument = Z\n",
+        "instrument = sm.add_constant(instrument)\n",
+        "\n",
+        "IV_model = IV2SLS(endog = Y, exog = exog, instrument = instrument).fit()\n",
+        "print(IV_model.summary())"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "r0sWI6XZP-il",
+        "outputId": "95d95221-6099-42f9-a800-40f550c7fc08"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "                          IV2SLS Regression Results                           \n",
+            "==============================================================================\n",
+            "Dep. Variable:                      y   R-squared:                       0.566\n",
+            "Model:                         IV2SLS   Adj. R-squared:                  0.566\n",
+            "Method:                     Two Stage   F-statistic:                     2507.\n",
+            "                        Least Squares   Prob (F-statistic):               0.00\n",
+            "Date:                Mon, 18 Mar 2024                                         \n",
+            "Time:                        16:54:35                                         \n",
+            "No. Observations:               10000                                         \n",
+            "Df Residuals:                    9998                                         \n",
+            "Df Model:                           1                                         \n",
+            "==============================================================================\n",
+            "                 coef    std err          t      P>|t|      [0.025      0.975]\n",
+            "------------------------------------------------------------------------------\n",
+            "const          0.0043      0.023      0.190      0.850      -0.040       0.049\n",
+            "x1             0.5025      0.010     50.067      0.000       0.483       0.522\n",
+            "==============================================================================\n",
+            "Omnibus:                        1.624   Durbin-Watson:                   2.000\n",
+            "Prob(Omnibus):                  0.444   Jarque-Bera (JB):                1.650\n",
+            "Skew:                          -0.029   Prob(JB):                        0.438\n",
+            "Kurtosis:                       2.977   Cond. No.                         4.78\n",
+            "==============================================================================\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "1st stage - **OLS estimate with OVB: δ = 0.9056**\n",
+        "\n",
+        "2nd stage - **2SLS estimate: δ = 0.5025**\n",
+        "\n",
+        "(g) The parameter value chosen randomly to generate the data was 0.5. In the first stage where we get delta with an omitted variable bias, we find that the estimate is 0.9056. In the second stage, the 2SLS estimator gave us a sufficiently close estimate of delta, i.e., 0.5025, to the parameter value we picked at the beginning of the experiment. Therefore, we can conclude that Z is a valid internal instrument to estimate the causal effect of X on Y."
+      ],
+      "metadata": {
+        "id": "Yr4pRJ_4LHLO"
+      }
+    }
+  ]
+}
